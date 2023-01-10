@@ -8,18 +8,18 @@ pub fn route(_ : &KicadPcb) -> () {
 enum Delimeter {
 	Open,
 	Close,
-	None,
 }
 
+type HalfParsed = Vec<Either<Value, Delimeter>>;
 
 pub fn parse (s : String) -> Option<SExpr> {
 	let chunks = s.split_whitespace().map(|x| x.to_string());
-	let mut leveled_values : Vec<Either<Value, Delimeter>> = Vec::new();
+	let mut leveled_values : HalfParsed = Vec::new();
 
 	for chunk in chunks {
-		let delims : Vec<Either<Value, Delimeter>> = get_delimeter(&chunk).iter()
+		let delims : HalfParsed = get_delimeter(&chunk).iter()
 			.map(|x| {let res : Either<Value, Delimeter> = Either::That(*x); res})
-			.collect::<Vec<Either<Value, Delimeter>>>();
+			.collect::<HalfParsed>();
 		leveled_values.extend(delims);
 
 		leveled_values.push(Either::This(turn_to_value(&chunk)));
@@ -50,18 +50,85 @@ fn test_parse() {
 
 
 
-fn merge_into_exp(leveled_values : Vec<Either<Value, Delimeter>>) -> SExpr {
+fn merge_into_exp(leveled_values : HalfParsed) -> SExpr {
+	println!("called mie with {:?}", leveled_values);
 	let mut res = SExpr::new();
+	let mut i = 0;
 
-	for elem in leveled_values.iter() {
-		match elem {
-			Either::This(value) => {res.append_value(value.clone())},
-			Either::That(delim) => {},
+	while i < leveled_values.len() {
+		match &leveled_values[i] {
+			Either::This(value) => { 
+				res.append_value(value.clone());
+				i += 1;
+			},
+
+			Either::That(_) => {
+				let closing_brace = get_closing_delim(&leveled_values, i);
+				res.append_exp(
+					merge_into_exp(leveled_values[i .. closing_brace].to_vec())
+				);
+				i = closing_brace + 1;
+			},
 		};
 	}
 
 	return res;
 }
+
+
+
+/// returns the index of the delimter closing the one at opening
+fn get_closing_delim(list : &HalfParsed, opening : usize) -> usize {
+	let mut relative_level = 1;
+/*
+	let sub_exp = list[opening..].iter().take_while(|x| {
+		match x {
+			Either::That(delim) => {
+				match delim {
+					Delimeter::Open => {relative_level += 1;},
+					Delimeter::Close => {relative_level -= 1;},
+				}
+			},
+			_ => {},
+		};
+		relative_level == 0
+	});
+*/
+	let mut index = opening;
+
+	while (index < list.len()) && (relative_level > 0) {
+		match &list[index] {
+			Either::This(_) => {},
+			Either::That(delim) => {
+				
+			},
+		};
+	}
+
+	let cnt = sub_exp.count();
+
+	println!("{:?}", cnt);
+
+	return index;
+}
+
+
+#[test]
+fn test_get_closing_delim() {
+	let test_list = vec!{
+		Either::This(Value::String("test".to_string())),
+		Either::That(Delimeter::Open),		
+		Either::This(Value::String("nesting".to_string())),
+		Either::This(Value::Int(1)),
+		Either::This(Value::Int(2)),
+		Either::This(Value::Float(3.5)),
+		Either::That(Delimeter::Close),
+		Either::This(Value::String("string".to_string()))
+	};
+
+	assert_eq!(get_closing_delim(&test_list, 1), 6);
+}
+
 
 #[test]
 fn test_merge_into_exp() {
@@ -79,12 +146,14 @@ fn test_merge_into_exp() {
 	};
 
 	let test_list = vec!{
-		(0, Value::String("test".to_string())),
-		(1, Value::String("nesting".to_string())),
-		(1, Value::Int(1)),
-		(1, Value::Int(2)),
-		(1, Value::Float(3.5)),
-		(0, Value::String("string".to_string()))
+		Either::This(Value::String("test".to_string())),
+		Either::That(Delimeter::Open),		
+		Either::This(Value::String("nesting".to_string())),
+		Either::This(Value::Int(1)),
+		Either::This(Value::Int(2)),
+		Either::This(Value::Float(3.5)),
+		Either::That(Delimeter::Close),
+		Either::This(Value::String("string".to_string()))
 	};
 
 	assert_eq!(test_res, merge_into_exp(test_list));
@@ -97,7 +166,7 @@ fn get_delimeter(s : &str) -> Vec<Delimeter> {
 	for c in s.trim_end().chars() {
 		if c.is_whitespace() { continue }
 
-		if c != ')' { break }
+		if c != '(' { break }
 
 		res.push(Delimeter::Open);
 	}
@@ -119,17 +188,17 @@ fn test_ascends() {
 	assert_eq!(get_delimeter(&"test test )"), vec!{Delimeter::Close});
 	assert_eq!(get_delimeter(&"test test )))"), vec!{Delimeter::Close, Delimeter::Close, Delimeter::Close});
 	assert_eq!(get_delimeter(&"test test ) "), vec!{Delimeter::Close});
-	assert_eq!(get_delimeter(&"test test"), vec!{Delimeter::None});
-	assert_eq!(get_delimeter(&"test ) test"), vec!{Delimeter::None});
+	assert_eq!(get_delimeter(&"test test"), vec!{});
+	assert_eq!(get_delimeter(&"test ) test"), vec!{});
 }
 
 #[test]
 fn test_descends() {
-	assert_eq!(get_delimeter(&"(test test"), 1);
-	assert_eq!(get_delimeter(&"( test test"), 1);
-	assert_eq!(get_delimeter(&" ( test test"), 1);
-	assert_eq!(get_delimeter(&"test test"), 0);
-	assert_eq!(get_delimeter(&"test ( test"), 0);
+	assert_eq!(get_delimeter(&"(test test"), vec!{Delimeter::Open});
+	assert_eq!(get_delimeter(&"( test test"), vec!{Delimeter::Open});
+	assert_eq!(get_delimeter(&" ( test test"), vec!{Delimeter::Open});
+	assert_eq!(get_delimeter(&"test test"), vec!{});
+	assert_eq!(get_delimeter(&"test ( test"), vec!{});
 }
 
 
@@ -181,7 +250,7 @@ pub enum Value {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Either<A, B> {
 	This(A),
 	That(B)
