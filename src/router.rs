@@ -16,15 +16,11 @@ pub fn parse (s : String) -> Option<SExpr> {
 	let chunks = s.split_whitespace().map(|x| x.to_string());
 	let mut leveled_values : Vec<Either<Value, Delimeter>> = Vec::new();
 
-	let mut current_level = 0;
-
 	for chunk in chunks {
-		leveled_values.extend(
-			get_delimeter(&chunk)
-			.iter()
-			.map(|x| Either::That(x))
-			.collect::<Either<Value, Delimeter>>()
-		);
+		let delims : Vec<Either<Value, Delimeter>> = get_delimeter(&chunk).iter()
+			.map(|x| {let res : Either<Value, Delimeter> = Either::That(*x); res})
+			.collect::<Vec<Either<Value, Delimeter>>>();
+		leveled_values.extend(delims);
 
 		leveled_values.push(Either::This(turn_to_value(&chunk)));
 	}
@@ -55,30 +51,13 @@ fn test_parse() {
 
 
 fn merge_into_exp(leveled_values : Vec<Either<Value, Delimeter>>) -> SExpr {
-	if leveled_values.is_empty() {
-		return SExpr::new();
-	}
-
-	let base_level = leveled_values[0].0;
-	let mut in_sub_exp = false;
 	let mut res = SExpr::new();
-	let mut sub_exp : Vec<(usize, Value)> = Vec::new();
 
-	for (level, value) in leveled_values.iter() {
-		if *level == base_level {
-			res.append_value(value.clone());
-			in_sub_exp = false;
-		}
-
-		if *level > base_level {
-			in_sub_exp = true;
-			sub_exp.push((*level, value.clone()));
-		}
-
-		if !in_sub_exp && *level == base_level {
-			res.append_exp(merge_into_exp(sub_exp.clone()));
-			sub_exp = Vec::new();
-		}
+	for elem in leveled_values.iter() {
+		match elem {
+			Either::This(value) => {res.append_value(value.clone())},
+			Either::That(delim) => {},
+		};
 	}
 
 	return res;
