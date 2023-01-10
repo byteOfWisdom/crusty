@@ -4,17 +4,29 @@ pub fn route(_ : &KicadPcb) -> () {
 }
 
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum Delimeter {
+	Open,
+	Close,
+	None,
+}
+
+
 pub fn parse (s : String) -> Option<SExpr> {
 	let chunks = s.split_whitespace().map(|x| x.to_string());
-	let mut leveled_values : Vec<(usize, Value)> = Vec::new();
+	let mut leveled_values : Vec<Either<Value, Delimeter>> = Vec::new();
 
 	let mut current_level = 0;
 
 	for chunk in chunks {
-		current_level += descends(&chunk);
-		current_level -= ascends(&chunk);
+		leveled_values.extend(
+			get_delimeter(&chunk)
+			.iter()
+			.map(|x| Either::That(x))
+			.collect::<Either<Value, Delimeter>>()
+		);
 
-		leveled_values.push((current_level, turn_to_value(&chunk)));
+		leveled_values.push(Either::This(turn_to_value(&chunk)));
 	}
 
 	return Some(merge_into_exp(leveled_values));
@@ -42,7 +54,7 @@ fn test_parse() {
 
 
 
-fn merge_into_exp(leveled_values : Vec<(usize, Value)>) -> SExpr {
+fn merge_into_exp(leveled_values : Vec<Either<Value, Delimeter>>) -> SExpr {
 	if leveled_values.is_empty() {
 		return SExpr::new();
 	}
@@ -100,19 +112,23 @@ fn test_merge_into_exp() {
 }
 
 
+fn get_delimeter(s : &str) -> Vec<Delimeter> {
+	let mut res = Vec::new();
 
-fn ascends(s : &str) -> usize {
-	let mut res = 0;
+	for c in s.trim_end().chars() {
+		if c.is_whitespace() { continue }
+
+		if c != ')' { break }
+
+		res.push(Delimeter::Open);
+	}
+
 	for c in s.trim_end().chars().rev() {
-		if c.is_whitespace() {
-			continue;
-		}
+		if c.is_whitespace() { continue }
 
-		if c != ')' {
-			return res;
-		}
+		if c != ')' { break }
 
-		res += 1;
+		res.push(Delimeter::Close);
 	}
 
 	return res;
@@ -120,29 +136,21 @@ fn ascends(s : &str) -> usize {
 
 #[test]
 fn test_ascends() {
-	assert_eq!(ascends(&"test test)"), 1);
-	assert_eq!(ascends(&"test test )"), 1);
-	assert_eq!(ascends(&"test test )))"), 3);
-	assert_eq!(ascends(&"test test ) "), 1);
-	assert_eq!(ascends(&"test test"), 0);
-	assert_eq!(ascends(&"test ) test"), 0);
-}
-
-
-fn descends(s : &str) -> usize {
-	if s.trim_start().chars().nth(0) == Some('(') {
-		return 1;
-	}
-	return 0;
+	assert_eq!(get_delimeter(&"test test)"), vec!{Delimeter::Close});
+	assert_eq!(get_delimeter(&"test test )"), vec!{Delimeter::Close});
+	assert_eq!(get_delimeter(&"test test )))"), vec!{Delimeter::Close, Delimeter::Close, Delimeter::Close});
+	assert_eq!(get_delimeter(&"test test ) "), vec!{Delimeter::Close});
+	assert_eq!(get_delimeter(&"test test"), vec!{Delimeter::None});
+	assert_eq!(get_delimeter(&"test ) test"), vec!{Delimeter::None});
 }
 
 #[test]
 fn test_descends() {
-	assert_eq!(descends(&"(test test"), 1);
-	assert_eq!(descends(&"( test test"), 1);
-	assert_eq!(descends(&" ( test test"), 1);
-	assert_eq!(descends(&"test test"), 0);
-	assert_eq!(descends(&"test ( test"), 0);
+	assert_eq!(get_delimeter(&"(test test"), 1);
+	assert_eq!(get_delimeter(&"( test test"), 1);
+	assert_eq!(get_delimeter(&" ( test test"), 1);
+	assert_eq!(get_delimeter(&"test test"), 0);
+	assert_eq!(get_delimeter(&"test ( test"), 0);
 }
 
 
@@ -193,7 +201,7 @@ pub enum Value {
 //	Uint(usize), // probably not good to have ambiguity when parsing
 }
 
-#[allow(dead_code)]
+
 #[derive(Debug, PartialEq)]
 pub enum Either<A, B> {
 	This(A),
