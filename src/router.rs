@@ -20,10 +20,25 @@ pub fn parse (s : String) -> Option<SExpr> {
 		let delims : HalfParsed = get_delimeter(&chunk).iter()
 			.map(|x| {let res : Either<Value, Delimeter> = Either::That(*x); res})
 			.collect::<HalfParsed>();
-		leveled_values.extend(delims);
 
+		let mut opening : HalfParsed = Vec::new();
+		let mut closing : HalfParsed = Vec::new();
+
+		for elem in delims.iter() {
+			if *elem == Either::That(Delimeter::Open) {
+				opening.push(elem.clone());
+			} else {
+				closing.push(elem.clone());
+			}
+		}
+
+
+		leveled_values.extend(opening);
 		leveled_values.push(Either::This(turn_to_value(&chunk)));
+		leveled_values.extend(closing);
 	}
+
+	println!("{:?}", leveled_values);
 
 	return Some(merge_into_exp(leveled_values));
 }
@@ -31,7 +46,7 @@ pub fn parse (s : String) -> Option<SExpr> {
 
 #[test]
 fn test_parse() {
-	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
+	let test_string = "test (nesting 1 2 3.5) string".to_string();
 
 	let test_res = Some(SExpr{
 		content : vec!{
@@ -51,7 +66,7 @@ fn test_parse() {
 
 
 fn merge_into_exp(leveled_values : HalfParsed) -> SExpr {
-	println!("called mie with {:?}", leveled_values);
+	//println!("called mie with {:?}", leveled_values);
 	let mut res = SExpr::new();
 	let mut i = 0;
 
@@ -62,71 +77,18 @@ fn merge_into_exp(leveled_values : HalfParsed) -> SExpr {
 				i += 1;
 			},
 
-			Either::That(_) => {
+			Either::That(Delimeter::Open) => {
 				let closing_brace = get_closing_delim(&leveled_values, i);
-				res.append_exp(
-					merge_into_exp(leveled_values[i .. closing_brace].to_vec())
-				);
-				i = closing_brace + 1;
+				let sub_exp = merge_into_exp(leveled_values[i + 1 .. closing_brace].to_vec());
+				res.append_exp(sub_exp);
+				i = closing_brace;
 			},
+
+			_ => {i += 1;},
 		};
 	}
 
 	return res;
-}
-
-
-
-/// returns the index of the delimter closing the one at opening
-fn get_closing_delim(list : &HalfParsed, opening : usize) -> usize {
-	let mut relative_level = 1;
-/*
-	let sub_exp = list[opening..].iter().take_while(|x| {
-		match x {
-			Either::That(delim) => {
-				match delim {
-					Delimeter::Open => {relative_level += 1;},
-					Delimeter::Close => {relative_level -= 1;},
-				}
-			},
-			_ => {},
-		};
-		relative_level == 0
-	});
-*/
-	let mut index = opening;
-
-	while (index < list.len()) && (relative_level > 0) {
-		match &list[index] {
-			Either::This(_) => {},
-			Either::That(delim) => {
-				
-			},
-		};
-	}
-
-	let cnt = sub_exp.count();
-
-	println!("{:?}", cnt);
-
-	return index;
-}
-
-
-#[test]
-fn test_get_closing_delim() {
-	let test_list = vec!{
-		Either::This(Value::String("test".to_string())),
-		Either::That(Delimeter::Open),		
-		Either::This(Value::String("nesting".to_string())),
-		Either::This(Value::Int(1)),
-		Either::This(Value::Int(2)),
-		Either::This(Value::Float(3.5)),
-		Either::That(Delimeter::Close),
-		Either::This(Value::String("string".to_string()))
-	};
-
-	assert_eq!(get_closing_delim(&test_list, 1), 6);
 }
 
 
@@ -157,6 +119,51 @@ fn test_merge_into_exp() {
 	};
 
 	assert_eq!(test_res, merge_into_exp(test_list));
+}
+
+
+
+/// returns the index of the delimter closing the one at opening
+fn get_closing_delim(list : &HalfParsed, opening : usize) -> usize {
+	let mut level = 0;
+	let mut index = opening;
+
+	while index < list.len() {
+		match list[index] {
+			Either::This(_) => {},
+			Either::That(Delimeter::Open) => {
+				level += 1;
+			},
+			Either::That(Delimeter::Close) => {
+				level -= 1;
+			},
+		};
+
+		if level == 0 {
+			return index;
+		}
+
+		index += 1;
+	}
+
+	return index;
+}
+
+
+#[test]
+fn test_get_closing_delim() {
+	let test_list = vec!{
+		Either::This(Value::String("test".to_string())),
+		Either::That(Delimeter::Open),		
+		Either::This(Value::String("nesting".to_string())),
+		Either::This(Value::Int(1)),
+		Either::This(Value::Int(2)),
+		Either::This(Value::Float(3.5)),
+		Either::That(Delimeter::Close),
+		Either::This(Value::String("string".to_string()))
+	};
+
+	assert_eq!(get_closing_delim(&test_list, 1), 6);
 }
 
 
