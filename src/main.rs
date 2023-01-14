@@ -2,6 +2,7 @@ use std::env;
 use std::fs::read_to_string;
 
 mod router;
+mod s_exp_parser;
 
 fn main() {
 	let mut to_stdout = false;
@@ -14,11 +15,11 @@ fn main() {
 
 	let input_file = read_to_string(&argv[1]).unwrap();
 
-	let input_board = router::parse(input_file).unwrap();
+	let input_board = s_exp_parser::parse(input_file).unwrap();
 
 	println!("{:?}", input_board);
 
-//	let output_board = router::route(&input_board);
+	//let output_board = router::route(input_board);
 
 	if to_stdout {
 //		println!("{:?}", output_board);

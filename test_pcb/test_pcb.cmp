@@ -1,0 +1,19 @@
+Cmp-Mod V01 Created by PcbNew   date = 2023 January 02, Monday 17:33:36
+
+BeginCmp
+TimeStamp = 09b5ffdd-bddf-41e6-baee-d10ae57491f5
+Path = /59f087d8-bd70-492d-9fa5-e75f5fbcf103
+Reference = D0;
+ValeurCmp = LED;
+IdModule  = LED_SMD:LED_1210_3225Metric;
+EndCmp
+
+BeginCmp
+TimeStamp = e95727d3-c608-414b-ba31-e0cb13af3694
+Path = /6eb6867a-6eef-433c-b7b7-09703f6332c0
+Reference = R0;
+ValeurCmp = R;
+IdModule  = Resistor_SMD:R_2010_5025Metric;
+EndCmp
+
+EndListe
