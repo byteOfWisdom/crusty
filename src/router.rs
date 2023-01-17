@@ -1,4 +1,6 @@
 use crate::s_exp_parser::SExpr;
+use std::fs::read_to_string;
+use crate::s_exp_parser;
 
 #[allow(dead_code)]
 pub fn route(_ : KicadPcb) -> KicadPcb {
@@ -6,10 +8,51 @@ pub fn route(_ : KicadPcb) -> KicadPcb {
 }
 
 
+#[derive(Debug)]
+pub enum KicadPcbError {
+	IoError(std::io::Error),
+	FileType,
+	ParseFail,
+}
+
+
+// maybe replace all name strings with hashes:
+// would use less mem and be stack allocatable instead of strings, which arent
+type PcbGeneral = ();
+type PcbNet = (usize, String);
+type PcbLayer = (usize, String, String); // no!
+type V2 = [f64; 2];
+
+
 #[allow(dead_code)]
 #[derive(Debug)]
+struct Pad {
+	layer : PcbLayer,
+	at : V2,
+	net : PcbNet,
+	//may need more fields
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug)]
+struct Footprint {
+	name : String,
+	layer : PcbLayer,
+	at : V2,
+	pads : Vec<Pad>,
+	//may need more fields
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug)]
+//only contains information relevant for routing, not a complete representation
 pub struct KicadPcb {
-	epxrs : Vec<SExpr>,
+	general : PcbGeneral,
+	layers : Vec<PcbLayer>,
+	nets : Vec<PcbNet>,
+	footprints : Vec<Footprint>
 }
 
 
@@ -17,8 +60,30 @@ pub struct KicadPcb {
 impl KicadPcb {
 	pub fn new(_expr : SExpr) -> Self {
 		KicadPcb {
-			epxrs : Vec::new(),
+			general : (),
+			layers : Vec::new(),
+			nets : Vec::new(),
+			footprints : Vec::new(),
 		}
+	}
+
+	pub fn from_file(file : &str) -> Result<Self, KicadPcbError> {
+		if !file.ends_with(&".kicad_pcb") {
+			return Err(KicadPcbError::FileType);
+		}
+
+		let data = match read_to_string(file) {
+			Ok(d) => d,
+			Err(e) => return Err(KicadPcbError::IoError(e)),
+		};
+
+		let _epxrs = match s_exp_parser::parse(data) {
+			Some(exp) => exp,
+			None => return Err(KicadPcbError::ParseFail),
+		};
+
+
+		return Err(KicadPcbError::ParseFail);
 	}
 }
 
