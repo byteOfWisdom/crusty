@@ -1,6 +1,9 @@
 use crate::s_exp_parser::SExpr;
-use std::fs::read_to_string;
 use crate::s_exp_parser;
+
+use std::fs::read_to_string;
+use std::collections::HashMap;
+
 
 #[allow(dead_code)]
 pub fn route(_ : KicadPcb) -> KicadPcb {
@@ -13,7 +16,11 @@ pub enum KicadPcbError {
 	IoError(std::io::Error),
 	FileType,
 	ParseFail,
+	UnpackFail,
 }
+
+
+type TypeMap = HashMap<&'static str, PartType>;
 
 
 // maybe replace all name strings with hashes:
@@ -56,6 +63,25 @@ pub struct KicadPcb {
 }
 
 
+#[derive(Debug)]
+enum PartType {
+	General,
+	Net,
+	Layer,
+	Footprint,
+}
+
+
+fn mak_key_map() -> TypeMap{
+	HashMap::from([
+		("general", PartType::General),
+		("net", PartType::Net),
+		("layer", PartType::Layer),
+		("footprint", PartType::Footprint),
+	])
+}
+
+
 #[allow(dead_code)]
 impl KicadPcb {
 	pub fn new(_expr : SExpr) -> Self {
@@ -77,14 +103,25 @@ impl KicadPcb {
 			Err(e) => return Err(KicadPcbError::IoError(e)),
 		};
 
-		let _epxrs = match s_exp_parser::parse(data) {
+		let epxrs = match s_exp_parser::parse(data) {
 			Some(exp) => exp,
 			None => return Err(KicadPcbError::ParseFail),
 		};
 
+		let pcb_exp = match unpack(epxrs) {
+			Some(res) => res,
+			None => return Err(KicadPcbError::UnpackFail),
+		};
+
+		let type_map = mak_key_map();
+
 
 		return Err(KicadPcbError::ParseFail);
 	}
+}
+
+fn unpack(input : SExpr) -> Option<SExpr> {
+	return None;
 }
 
 

@@ -24,9 +24,12 @@ pub enum Either<A, B> {
 }
 
 
-#[derive(Debug, PartialEq)]
+type Element = Either<Value, Box<SExpr>>;
+
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct SExpr {
-	content : Vec<Either<Value, Box<SExpr>>>
+	content : Vec<Element>
 }
 
 #[allow(dead_code)]
@@ -67,13 +70,29 @@ impl SExpr {
 		};
 	}
 
-	pub fn get_value_from_name(&self, _name : &str) -> Either<Value, SExpr> {
-		for _elem in self.content.iter() {
+	pub fn get(&self, name : &str) -> Vec<SExpr>{
+		if self.get_name() == name {
+			return vec!{SExpr{content : self.content[1..].to_vec()}};
+		} else {
+			let mut res = Vec::new();
+			for sub in self.content.iter() {
+				match sub {
+					Either::This(_) => {},
+					Either::That(exp) => {
+						res.append(&mut exp.get(name));
+					},
+				};
+			}
 
+			return res;
 		}
-
-		return Either::This(Value::None);
 	}
+}
+
+
+#[test]
+fn test_sexpr_get() {
+	unimplemented!();
 }
 
 
