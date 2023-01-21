@@ -92,7 +92,23 @@ impl SExpr {
 
 #[test]
 fn test_sexpr_get() {
-	unimplemented!();
+	let test_string = "test (nesting 1 2 3.5) string".to_string();
+	let test_expr = parse(test_string).unwrap();
+
+	let test_res = SExpr{
+		content : vec!{
+			Either::This(Value::Int(1)),
+			Either::This(Value::Int(2)),
+			Either::This(Value::Float(3.5)),
+		},
+	};
+
+
+	assert_eq!(test_expr.get("nesting")[0], test_res);
+
+
+	//TODO: more test cases
+
 }
 
 

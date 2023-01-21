@@ -56,7 +56,7 @@ struct Footprint {
 #[derive(Debug)]
 //only contains information relevant for routing, not a complete representation
 pub struct KicadPcb {
-	general : PcbGeneral,
+	general : 	PcbGeneral,
 	layers : Vec<PcbLayer>,
 	nets : Vec<PcbNet>,
 	footprints : Vec<Footprint>
@@ -74,10 +74,10 @@ enum PartType {
 
 fn mak_key_map() -> TypeMap{
 	HashMap::from([
-		("general", PartType::General),
-		("net", PartType::Net),
-		("layer", PartType::Layer),
-		("footprint", PartType::Footprint),
+		("general", 	PartType::General),
+		("net", 		PartType::Net),
+		("layer", 		PartType::Layer),
+		("footprint", 	PartType::Footprint),
 	])
 }
 
