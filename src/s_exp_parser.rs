@@ -29,7 +29,7 @@ type Element = Either<Value, Box<SExpr>>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SExpr {
-	content : Vec<Element>
+	pub content : Vec<Element>
 }
 
 #[allow(dead_code)]
@@ -87,6 +87,68 @@ impl SExpr {
 			return res;
 		}
 	}
+
+	fn is_trivial(&self) -> bool {
+		if self.content.len() < 2 {
+			return match self.content[0] {
+				Either::This(_) => false,
+				Either::That(_) => true, //in case the 1 element is an expression
+			};
+		}
+
+		return false;
+	}
+
+
+	/// returns a new s expression, with empty outer nestings trimmed away.
+	/// i.e. ((((a b c)))) becomes a b c
+	/// not actuall sure if this should be here or somewhere else, like router.rs
+	/// as it is fairly specific to the application, but also much nicer to write as a method
+	pub fn remove_trivial(&self) -> SExpr {
+		if self.is_trivial() {
+			let trimmed_exp = match &self.content[0] {
+				Either::This(_) => panic!("SExpr.is_trivial didn't categorize correctly. this should be unreachable."),
+				Either::That(inner) => *inner.clone(),
+			};
+
+			return trimmed_exp.remove_trivial();
+		}
+
+		return self.clone();
+	}
+}
+
+
+#[test]
+fn test_is_trivial() {
+	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
+	let test_expr = parse(test_string).unwrap();
+
+	assert_eq!(test_expr.is_trivial(), true);
+
+	//TODO: more test data
+}
+
+
+#[test]
+fn test_remove_trivial() {
+	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
+	let test_expr = parse(test_string).unwrap();
+
+	let test_res = SExpr{
+		content : vec!{
+			Either::This(Value::String("test".to_string())),
+			Either::That(Box::new(SExpr{content : vec!{
+				Either::This(Value::String("nesting".to_string())),
+				Either::This(Value::Int(1)),
+				Either::This(Value::Int(2)),
+				Either::This(Value::Float(3.5)),
+			}})),
+			Either::This(Value::String("string".to_string()))
+		},
+	};
+
+	assert_eq!(test_expr.remove_trivial(), test_res);
 }
 
 
@@ -103,9 +165,31 @@ fn test_sexpr_get() {
 		},
 	};
 
+	let test_res_two = vec!{
+		SExpr{
+			content : vec!{
+				Either::This(Value::Int(1)),
+				Either::This(Value::Int(2)),
+				Either::This(Value::Float(3.5)),
+			},
+		},
+		SExpr{
+			content : vec!{
+				Either::This(Value::Int(5)),
+				Either::This(Value::Int(6)),
+				Either::This(Value::Int(7)),
+			},
+		}
+
+	};
 
 	assert_eq!(test_expr.get("nesting")[0], test_res);
 
+
+	let test_string_two = "test (nesting 1 2 3.5) (nesting 5 6 7) string".to_string();
+	let test_expr_two = parse(test_string_two).unwrap();
+
+	assert_eq!(test_expr_two.get("nesting"), test_res_two);
 
 	//TODO: more test cases
 

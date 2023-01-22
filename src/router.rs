@@ -16,7 +16,6 @@ pub enum KicadPcbError {
 	IoError(std::io::Error),
 	FileType,
 	ParseFail,
-	UnpackFail,
 }
 
 
@@ -108,20 +107,13 @@ impl KicadPcb {
 			None => return Err(KicadPcbError::ParseFail),
 		};
 
-		let pcb_exp = match unpack(epxrs) {
-			Some(res) => res,
-			None => return Err(KicadPcbError::UnpackFail),
-		};
+		let pcb_exp = epxrs.remove_trivial();
 
 		let type_map = mak_key_map();
 
 
 		return Err(KicadPcbError::ParseFail);
 	}
-}
-
-fn unpack(input : SExpr) -> Option<SExpr> {
-	return None;
 }
 
 
