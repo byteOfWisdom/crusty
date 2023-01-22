@@ -52,8 +52,8 @@ impl SExpr {
 		let mut res = String::new();
 		for element in self.content.iter() {
 			res.push_str(&match element {
-				Either::This(value) => value_as_string(value),
-				Either::That(sub_exp) => sub_exp.print(),
+				Either::This(value) => format!(" {} ", value_as_string(value)),
+				Either::That(sub_exp) => format!("({})", sub_exp.print()),
 			});
 		}
 
@@ -75,7 +75,7 @@ impl SExpr {
 			return vec!{SExpr{content : self.content[1..].to_vec()}};
 		} else {
 			let mut res = Vec::new();
-			for sub in self.content.iter() {
+			for sub in self.iter() {
 				match sub {
 					Either::This(_) => {},
 					Either::That(exp) => {
@@ -122,6 +122,15 @@ impl SExpr {
 		return self.content.iter();
 	}
 }
+
+#[test]
+fn test_print() {
+	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
+	let test_expr = parse(test_string.clone()).unwrap();
+
+	assert_eq!(parse(test_expr.print()), Some(test_expr));
+}
+
 
 
 #[test]

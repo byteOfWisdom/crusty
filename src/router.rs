@@ -18,13 +18,8 @@ pub enum KicadPcbError {
 	ParseFail,
 }
 
-
-type TypeMap = HashMap<&'static str, PartType>;
-
-
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
-type PcbGeneral = ();
 type PcbNet = (usize, String);
 type PcbLayer = (usize, String, String); // no!
 type V2 = [f64; 2];
@@ -32,10 +27,17 @@ type V2 = [f64; 2];
 
 #[allow(dead_code)]
 #[derive(Debug)]
+struct PcbGeneral {
+	pub thickness: f64,
+}
+
+
+#[allow(dead_code)]
+#[derive(Debug)]
 struct Pad {
-	layer : PcbLayer,
-	at : V2,
-	net : PcbNet,
+	pub layer : PcbLayer,
+	pub at : V2,
+	pub net : PcbNet,
 	//may need more fields
 }
 
@@ -43,10 +45,10 @@ struct Pad {
 #[allow(dead_code)]
 #[derive(Debug)]
 struct Footprint {
-	name : String,
-	layer : PcbLayer,
-	at : V2,
-	pads : Vec<Pad>,
+	pub name : String,
+	pub layer : PcbLayer,
+	pub at : V2,
+	pub pads : Vec<Pad>,
 	//may need more fields
 }
 
@@ -62,30 +64,11 @@ pub struct KicadPcb {
 }
 
 
-#[derive(Debug)]
-enum PartType {
-	General,
-	Net,
-	Layer,
-	Footprint,
-}
-
-
-fn make_key_map() -> TypeMap{
-	HashMap::from([
-		("general", 	PartType::General),
-		("net", 		PartType::Net),
-		("layer", 		PartType::Layer),
-		("footprint", 	PartType::Footprint),
-	])
-}
-
-
 #[allow(dead_code)]
 impl KicadPcb {
 	pub fn new(_expr : SExpr) -> Self {
 		KicadPcb {
-			general : (),
+			general : PcbGeneral{ thickness: 0.0},
 			layers : Vec::new(),
 			nets : Vec::new(),
 			footprints : Vec::new(),
@@ -109,15 +92,52 @@ impl KicadPcb {
 
 		let pcb_exp = epxrs.remove_trivial();
 
-		let type_map = make_key_map();
+		
+		// get all the relevant parts from the expression
+		//--------------------------------------------------
+		let mut pcb = KicadPcb{
+			general : match get_general(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
 
-		for elem in pcb_exp.iter() {
+			layers : match get_layers(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
 			
-		}
+			nets : match get_nets(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
+			
+			footprints : match get_footprints(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
+		};
 
-		return Err(KicadPcbError::ParseFail);
+		return Ok(pcb);
 	}
 }
+
+
+fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
+	return Err(KicadPcbError::ParseFail);
+}
+
+fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
+	return Err(KicadPcbError::ParseFail);
+}
+
+fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
+	return Err(KicadPcbError::ParseFail);
+}
+
+fn get_footprints(exp : &SExpr) -> Result<Vec<Footprint>, KicadPcbError> {
+	return Err(KicadPcbError::ParseFail);
+}
+
 
 
 #[test]
