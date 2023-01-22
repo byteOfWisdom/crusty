@@ -71,7 +71,7 @@ enum PartType {
 }
 
 
-fn mak_key_map() -> TypeMap{
+fn make_key_map() -> TypeMap{
 	HashMap::from([
 		("general", 	PartType::General),
 		("net", 		PartType::Net),
@@ -109,8 +109,11 @@ impl KicadPcb {
 
 		let pcb_exp = epxrs.remove_trivial();
 
-		let type_map = mak_key_map();
+		let type_map = make_key_map();
 
+		for elem in pcb_exp.iter() {
+			
+		}
 
 		return Err(KicadPcbError::ParseFail);
 	}

@@ -116,6 +116,11 @@ impl SExpr {
 
 		return self.clone();
 	}
+
+
+	pub fn iter(&self) -> std::slice::Iter<Element> {
+		return self.content.iter();
+	}
 }
 
 
