@@ -269,8 +269,10 @@ fn merge_into_exp(leveled_values : HalfParsed) -> SExpr {
 
 	while i < leveled_values.len() {
 		match &leveled_values[i] {
-			Either::This(value) => { 
-				res.append_value(value.clone());
+			Either::This(value) => {
+				if value != &Value::None {
+					res.append_value(value.clone());
+				}
 				i += 1;
 			},
 

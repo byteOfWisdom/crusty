@@ -123,19 +123,33 @@ impl KicadPcb {
 
 
 fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
-	return Err(KicadPcbError::ParseFail);
+	let get_err = Err(KicadPcbError::ParseFail);
+
+	
+
+
+	return get_err;
 }
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
-	return Err(KicadPcbError::ParseFail);
+	let get_err = Err(KicadPcbError::ParseFail);
+
+
+	return get_err;
 }
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
-	return Err(KicadPcbError::ParseFail);
+	let get_err = Err(KicadPcbError::ParseFail);
+
+
+	return get_err;
 }
 
 fn get_footprints(exp : &SExpr) -> Result<Vec<Footprint>, KicadPcbError> {
-	return Err(KicadPcbError::ParseFail);
+	let get_err = Err(KicadPcbError::ParseFail);
+
+
+	return get_err;
 }
 
 
