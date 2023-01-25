@@ -2,6 +2,7 @@ use std::env;
 use std::fs::read_to_string;
 
 mod router;
+mod value;
 mod s_exp_parser;
 
 fn main() {

@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 
 use crate::s_exp_parser::SExpr;
 use crate::s_exp_parser;
-
+use crate::value::*;
 
 #[allow(dead_code)]
 pub fn route(_ : KicadPcb) -> KicadPcb {
@@ -17,15 +17,22 @@ pub enum KicadPcbError {
 	ParseFail,
 }
 
+#[derive(Debug, Copy, Clone)]
+enum LayerType {
+	User,
+	Signal,
+}
+
+
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
 type PcbNet = (usize, String);
-type PcbLayer = (usize, String, String); // no!
+type PcbLayer = (usize, String, LayerType, String); // no!
 type V2 = [f64; 2];
 
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct PcbGeneral {
 	pub thickness: f64,
 }
@@ -124,24 +131,56 @@ impl KicadPcb {
 fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
 	let get_err = Err(KicadPcbError::ParseFail);
 
-	for expression in exp.get("general").iter() {
-		println!("{:?}", expression);
-	}	
+	for general_section in exp.get("general").iter() {
+		match general_section.get_value("thickness") {
+			Some(Value::Float(f)) => {
+				return Ok(PcbGeneral{thickness : f});
+			},
+			_ => continue,
+		};
+	}
 
 	return get_err;
 }
 
 #[test]
 fn test_get_general() {
-	
+	let test_pcb_general = get_general(
+		&s_exp_parser::parse(
+			read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+		).unwrap()
+	).unwrap();
+
+	assert_eq!(test_pcb_general.thickness, 1.6);
 }
 
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
 	let get_err = Err(KicadPcbError::ParseFail);
 
+	let to_layer = |lexp| {
+
+	};
+
+
+	let mut layers = Vec::new();
+
+	for layer in exp.get("layers").iter() {
+		layers.push(to_layer(layer));
+	}
 
 	return get_err;
+}
+
+#[test]
+fn test_get_layers() {
+	let test_pcb_general = get_layers(
+		&s_exp_parser::parse(
+			read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+		).unwrap()
+	).unwrap();
+
+	panic!();
 }
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
