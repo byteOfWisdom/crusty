@@ -1,8 +1,7 @@
+use std::fs::read_to_string;
+
 use crate::s_exp_parser::SExpr;
 use crate::s_exp_parser;
-
-use std::fs::read_to_string;
-use std::collections::HashMap;
 
 
 #[allow(dead_code)]
@@ -125,11 +124,18 @@ impl KicadPcb {
 fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
 	let get_err = Err(KicadPcbError::ParseFail);
 
-	
-
+	for expression in exp.get("general").iter() {
+		println!("{:?}", expression);
+	}	
 
 	return get_err;
 }
+
+#[test]
+fn test_get_general() {
+	
+}
+
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
 	let get_err = Err(KicadPcbError::ParseFail);
