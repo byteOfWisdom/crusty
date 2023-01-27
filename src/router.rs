@@ -4,21 +4,17 @@ use crate::s_exp_parser::SExpr;
 use crate::s_exp_parser;
 use crate::value::*;
 
-#[allow(dead_code)]
-pub fn route(_ : KicadPcb) -> KicadPcb {
-	unimplemented!();
-}
-
-
 #[derive(Debug)]
 pub enum KicadPcbError {
 	IoError(std::io::Error),
 	FileType,
 	ParseFail,
+	NoLayer,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 enum LayerType {
+	#[default]
 	User,
 	Signal,
 }
@@ -27,8 +23,55 @@ enum LayerType {
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
 type PcbNet = (usize, String);
-type PcbLayer = (usize, String, LayerType, String); // no!
 type V2 = [f64; 2];
+
+
+#[derive(Debug, Clone, Default)]
+struct PcbLayer {
+	pub id : usize,
+	pub name : String,
+	pub layer_type : LayerType,
+	pub attrib : String,
+}
+
+
+impl PcbLayer {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let get_err = KicadPcbError::NoLayer;
+
+		if exp.values().len() == 0 {
+			return Err(get_err);
+		}
+
+		let id = match value_to_int(&exp.values()[0]) {
+			Some(v) => v, 
+			None => return Err(get_err),
+		};
+
+		let name = match value_to_string(&exp.values()[1]) {
+			Some(v) => v, 
+			None => return Err(get_err),
+		};
+
+		let layer_type = match value_to_string(&exp.values()[2]) {
+			Some(v) => LayerType::default(),
+			None => return Err(get_err),
+		};
+
+		let attrib = match exp.values().get(3) {
+			Some(value) => value_to_string(&value).unwrap(),
+			None => String::new(),
+		};
+
+
+		return Ok(PcbLayer {
+			id : id as usize,
+			name : name,
+			layer_type : layer_type,
+			attrib : String::new(),
+		});
+	}
+}
 
 
 #[allow(dead_code)]
@@ -81,6 +124,7 @@ impl KicadPcb {
 		}
 	}
 
+
 	pub fn from_file(file : &str) -> Result<Self, KicadPcbError> {
 		if !file.ends_with(&".kicad_pcb") {
 			return Err(KicadPcbError::FileType);
@@ -125,6 +169,20 @@ impl KicadPcb {
 
 		return Ok(pcb);
 	}
+
+	pub fn write_to_file(path : &str) {
+		unimplemented!();
+	}
+
+
+	fn as_s_expr(&self) -> SExpr {
+		unimplemented!();
+	}
+}
+
+#[allow(dead_code)]
+pub fn route(_ : KicadPcb) -> KicadPcb {
+	unimplemented!();
 }
 
 
@@ -156,31 +214,28 @@ fn test_get_general() {
 
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
-	let get_err = Err(KicadPcbError::ParseFail);
-
-	let to_layer = |lexp| {
-
-	};
-
-
 	let mut layers = Vec::new();
 
-	for layer in exp.get("layers").iter() {
-		layers.push(to_layer(layer));
+	for layer in exp.get("layers")[0].sub_expressions().iter() {
+		println!("{:?}\n", &layer);
+		match PcbLayer::from_exp(layer) {
+			Ok(l) => layers.push(l),
+			Err(_) => continue,
+		};
 	}
 
-	return get_err;
+	return Ok(layers);
 }
 
 #[test]
 fn test_get_layers() {
-	let test_pcb_general = get_layers(
-		&s_exp_parser::parse(
-			read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
-		).unwrap()
+	let test_pcb = &s_exp_parser::parse(
+		read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
 	).unwrap();
 
-	panic!();
+	let layers = get_layers(test_pcb).unwrap();
+
+	assert_eq!(layers.len(), 29);
 }
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {

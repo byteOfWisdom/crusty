@@ -128,6 +128,33 @@ impl SExpr {
 	pub fn iter(&self) -> std::slice::Iter<Element> {
 		return self.content.iter();
 	}
+
+	pub fn values(&self) -> Vec<Value>{
+		let mut vs = Vec::new();
+
+		for elem in self.content.iter() {
+			match elem {
+				Either::This(value) => vs.push(value.clone()),
+				Either::That(_) => continue,
+			};
+		}
+
+		return vs;
+	}
+
+	pub fn sub_expressions(&self) -> Vec<SExpr> {
+		let mut vs = Vec::new();
+
+		for elem in self.content.iter() {
+			match elem {
+				Either::That(exp) => vs.push(*exp.clone()),
+				Either::This(_) => continue,
+			};
+		}
+
+		return vs;
+
+	}
 }
 
 
@@ -377,7 +404,7 @@ fn test_get_closing_delim() {
 fn get_delimeter(s : &str) -> Vec<Delimeter> {
 	let mut res = Vec::new();
 
-	for c in s.trim_end().chars() {
+	for c in s.trim_start().chars() {
 		if c.is_whitespace() { continue }
 
 		if c != '(' { break }

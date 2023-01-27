@@ -66,3 +66,24 @@ fn test_value_as_string() {
 		assert_eq!(&value_as_string(&turn_to_value(&case)), case);
 	}
 }
+
+pub fn value_to_float(v : &Value) -> Option<f64> {
+	match v {
+		Value::Float(f) => Some(*f),
+		_ => None,
+	}
+}
+
+pub fn value_to_int(v : &Value) -> Option<isize> {
+	match v {
+		Value::Int(n) => Some(*n),
+		_ => None,
+	}
+}
+
+pub fn value_to_string(v : &Value) -> Option<String> {
+	match v {
+		Value::String(s) => Some(s.clone()),
+		_ => None,
+	}
+}
