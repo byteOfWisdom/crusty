@@ -10,6 +10,7 @@ pub enum KicadPcbError {
 	FileType,
 	ParseFail,
 	NoLayer,
+	Other(String),
 }
 
 #[derive(Debug, Copy, Clone, Default)]
@@ -22,9 +23,58 @@ enum LayerType {
 
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
-type PcbNet = (usize, String);
+#[derive(Debug, Default, Clone)]
+struct PcbNet {
+	pub id : isize,
+	pub name : String,
+}
+
+impl PcbNet {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let values = exp.values();
+
+		let id = match match values.get(0) {
+			Some(s) => value_to_int(s),
+			None => return Err(KicadPcbError::Other(format!("{:?}", exp))),
+		} {
+			Some(v) => v,
+			None => return Err(KicadPcbError::ParseFail),
+		};
+
+		let name = match match values.get(1) {
+			Some(s) => value_to_string(s),
+			None => return Err(KicadPcbError::ParseFail),
+		} {
+			Some(v) => v,
+			None => return Err(KicadPcbError::ParseFail),
+		};
+
+		return Ok(PcbNet {
+			id : id,
+			name : name,
+		});
+	}
+}
+
+#[test]
+fn test_pcb_net_from_exp() {
+	let test_string = "(net 1 \"GND\")";
+	let exp = s_exp_parser::parse(&test_string).unwrap();
+	let net = PcbNet::from_exp(&exp.get("net")[0]).unwrap();
+
+	assert_eq!(net.id, 1);
+	assert_eq!(net.name, "\"GND\"");
+}
+
+
 type V2 = [f64; 2];
 
+
+// TODO implement this
+// TODO add to parser
+#[derive(Debug)]
+struct Setup {
+}
 
 #[derive(Debug, Clone, Default)]
 struct PcbLayer {
@@ -82,23 +132,86 @@ struct PcbGeneral {
 
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Pad {
-	pub layer : PcbLayer,
+	pub layer : Vec<String>,
 	pub at : V2,
 	pub net : PcbNet,
 	//may need more fields
 }
 
+impl Pad {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let get_err = KicadPcbError::ParseFail;
+		let mut pad = Pad::default();
+
+		pad.layer = match exp.get("layers")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),
+			}
+			.values()
+			.iter()
+			.map(|x| value_to_string(&x).unwrap()) //maybe replace unwrap with a match
+			.collect();
+
+		pad.at = match exp.get("at")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),				
+			}.values()
+			.iter()
+			.map(|x| match value_to_float(&x) {
+				Some(v) => v,
+				None => panic!("{:?}", x),
+			}) // maybe make this a match
+			.collect::<Vec<f64>>()
+			.try_into()
+			.unwrap(); //maybe make this a match
+
+		return Ok(pad);
+	}
+}
+
+#[test]
+fn test_pad_from_exp() {
+	let test_string = "(pad \"1\" smd roundrect (at -1.4 0) (size 1.25 2.65) (layers \"F.Cu\" \"F.Paste\" \"F.Mask\") (roundrect_rratio 0.2)
+      (net 1 \"GND\") (pinfunction \"K\") (pintype \"passive\") (tstamp 2b94d621-c132-4657-b654-d69cf5549fbe))";
+	
+	let exp = s_exp_parser::parse(&test_string).unwrap();
+	let pad = Pad::from_exp(&exp.get("pad")[0]).unwrap();
+
+	assert_eq!(pad.at, [-1.4, 0.0]);
+}
+
+
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Footprint {
 	pub name : String,
 	pub layer : PcbLayer,
 	pub at : V2,
 	pub pads : Vec<Pad>,
 	//may need more fields
+}
+
+
+impl Footprint {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let get_err = KicadPcbError::ParseFail;
+
+		let mut footprint = Footprint::default();
+
+		footprint.pads = exp.get("pad").iter()
+			.filter_map(|x| match Pad::from_exp(&x) {
+				Ok(v) => Some(v), 
+				Err(e) => None
+			})
+			.collect();
+
+		return Ok(footprint);
+	}
 }
 
 
@@ -135,7 +248,7 @@ impl KicadPcb {
 			Err(e) => return Err(KicadPcbError::IoError(e)),
 		};
 
-		let epxrs = match s_exp_parser::parse(data) {
+		let epxrs = match s_exp_parser::parse(&data) {
 			Some(exp) => exp,
 			None => return Err(KicadPcbError::ParseFail),
 		};
@@ -145,7 +258,7 @@ impl KicadPcb {
 		
 		// get all the relevant parts from the expression
 		//--------------------------------------------------
-		let mut pcb = KicadPcb{
+		let pcb = KicadPcb{
 			general : match get_general(&pcb_exp) {
 				Ok(result) => result,
 				Err(e) => return Err(e),
@@ -205,7 +318,7 @@ fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
 fn test_get_general() {
 	let test_pcb_general = get_general(
 		&s_exp_parser::parse(
-			read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+			&read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
 		).unwrap()
 	).unwrap();
 
@@ -216,6 +329,8 @@ fn test_get_general() {
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
 	let mut layers = Vec::new();
 
+
+	// assumes the first "layers" tag to be the declaration
 	for layer in exp.get("layers")[0].sub_expressions().iter() {
 		println!("{:?}\n", &layer);
 		match PcbLayer::from_exp(layer) {
@@ -230,13 +345,14 @@ fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
 #[test]
 fn test_get_layers() {
 	let test_pcb = &s_exp_parser::parse(
-		read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+		&read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
 	).unwrap();
 
 	let layers = get_layers(test_pcb).unwrap();
 
 	assert_eq!(layers.len(), 29);
 }
+
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
 	let get_err = Err(KicadPcbError::ParseFail);
@@ -245,13 +361,34 @@ fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
 	return get_err;
 }
 
+
 fn get_footprints(exp : &SExpr) -> Result<Vec<Footprint>, KicadPcbError> {
-	let get_err = Err(KicadPcbError::ParseFail);
+	let raw_footprints = exp.get("footprint");
 
+	let mut done_footprints = Vec::new();
 
-	return get_err;
+	for footprint in raw_footprints.iter() {
+		match Footprint::from_exp(footprint) {
+			Ok(f) => {done_footprints.push(f)},
+			Err(e) => return Err(e),
+		};
+	}
+
+	return Ok(done_footprints);
 }
 
+
+
+#[test]
+fn test_get_footprints() {
+	let test_pcb = &s_exp_parser::parse(
+		&read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+	).unwrap();
+
+	let footprints = get_footprints(&test_pcb).unwrap();
+
+	assert_eq!(footprints.len(), 2);
+}
 
 
 #[test]

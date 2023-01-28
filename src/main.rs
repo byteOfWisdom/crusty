@@ -16,7 +16,7 @@ fn main() {
 
 	let input_file = read_to_string(&argv[1]).unwrap();
 
-	let input_board = s_exp_parser::parse(input_file).unwrap();
+	let input_board = s_exp_parser::parse(&input_file).unwrap();
 
 	println!("{:?}", input_board);
 

@@ -70,6 +70,7 @@ fn test_value_as_string() {
 pub fn value_to_float(v : &Value) -> Option<f64> {
 	match v {
 		Value::Float(f) => Some(*f),
+		Value::Int(i) => Some(*i as f64),
 		_ => None,
 	}
 }

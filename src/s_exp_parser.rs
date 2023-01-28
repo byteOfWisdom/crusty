@@ -42,7 +42,7 @@ impl SExpr {
 
 	pub fn print(&self) -> String {
 		let mut res = String::new();
-		for element in self.content.iter() {
+		for element in self.iter() {
 			res.push_str(&match element {
 				Either::This(value) => format!(" {} ", value_as_string(value)),
 				Either::That(sub_exp) => format!("({})", sub_exp.print()),
@@ -132,7 +132,7 @@ impl SExpr {
 	pub fn values(&self) -> Vec<Value>{
 		let mut vs = Vec::new();
 
-		for elem in self.content.iter() {
+		for elem in self.iter() {
 			match elem {
 				Either::This(value) => vs.push(value.clone()),
 				Either::That(_) => continue,
@@ -145,7 +145,7 @@ impl SExpr {
 	pub fn sub_expressions(&self) -> Vec<SExpr> {
 		let mut vs = Vec::new();
 
-		for elem in self.content.iter() {
+		for elem in self.iter() {
 			match elem {
 				Either::That(exp) => vs.push(*exp.clone()),
 				Either::This(_) => continue,
@@ -161,9 +161,9 @@ impl SExpr {
 #[test]
 fn test_print() {
 	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
-	let test_expr = parse(test_string.clone()).unwrap();
+	let test_expr = parse(&test_string).unwrap();
 
-	assert_eq!(parse(test_expr.print()), Some(test_expr));
+	assert_eq!(parse(&test_expr.print()), Some(test_expr));
 }
 
 
@@ -171,7 +171,7 @@ fn test_print() {
 #[test]
 fn test_is_trivial() {
 	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
-	let test_expr = parse(test_string).unwrap();
+	let test_expr = parse(&test_string).unwrap();
 
 	assert_eq!(test_expr.is_trivial(), true);
 
@@ -182,7 +182,7 @@ fn test_is_trivial() {
 #[test]
 fn test_remove_trivial() {
 	let test_string = "(test (nesting 1 2 3.5) string)".to_string();
-	let test_expr = parse(test_string).unwrap();
+	let test_expr = parse(&test_string).unwrap();
 
 	let test_res = SExpr{
 		content : vec!{
@@ -204,7 +204,7 @@ fn test_remove_trivial() {
 #[test]
 fn test_sexpr_get() {
 	let test_string = "test (nesting 1 2 3.5) string".to_string();
-	let test_expr = parse(test_string).unwrap();
+	let test_expr = parse(&test_string).unwrap();
 
 	let test_res = SExpr{
 		content : vec!{
@@ -236,7 +236,7 @@ fn test_sexpr_get() {
 
 
 	let test_string_two = "test (nesting 1 2 3.5) (nesting 5 6 7) string".to_string();
-	let test_expr_two = parse(test_string_two).unwrap();
+	let test_expr_two = parse(&test_string_two).unwrap();
 
 	assert_eq!(test_expr_two.get("nesting"), test_res_two);
 
@@ -245,7 +245,7 @@ fn test_sexpr_get() {
 }
 
 
-pub fn parse (s : String) -> Option<SExpr> {
+pub fn parse (s : &str) -> Option<SExpr> {
 	let chunks = s.split_whitespace().map(|x| x.to_string());
 	let mut leveled_values : HalfParsed = Vec::new();
 
@@ -293,7 +293,7 @@ fn test_parse() {
 			Either::This(Value::String("string".to_string()))
 		},
 	});
-	assert_eq!(test_res, parse(test_string));
+	assert_eq!(test_res, parse(&test_string));
 }
 
 
