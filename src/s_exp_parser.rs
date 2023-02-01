@@ -157,6 +157,14 @@ impl SExpr {
 	}
 }
 
+#[test]
+fn test_get() {
+	let test_string = "(test (\nnesting 1 2 3.5)\n (nesting 1 2 3.5\n) \n(nesting 1 2 3.5\n) string)".to_string();
+	let test_expr = parse(&test_string).unwrap();
+
+	assert_eq!(test_expr.get("nesting").len(), 3);
+}
+
 
 #[test]
 fn test_print() {
@@ -438,6 +446,18 @@ fn test_descends() {
 	assert_eq!(get_delimeter(&"(test test"), vec!{Delimeter::Open});
 	assert_eq!(get_delimeter(&"( test test"), vec!{Delimeter::Open});
 	assert_eq!(get_delimeter(&" ( test test"), vec!{Delimeter::Open});
+	assert_eq!(get_delimeter(&"test test"), vec!{});
+	assert_eq!(get_delimeter(&"test ( test"), vec!{});
+}
+
+
+#[test]
+fn test_mixed_parens() {
+	let o = Delimeter::Open;
+	let c = Delimeter::Close;
+	assert_eq!(get_delimeter(&"(test test))"), vec!{o, c, c});
+	assert_eq!(get_delimeter(&"("), vec!{o});
+	assert_eq!(get_delimeter(&") ("), vec!{c, o});
 	assert_eq!(get_delimeter(&"test test"), vec!{});
 	assert_eq!(get_delimeter(&"test ( test"), vec!{});
 }

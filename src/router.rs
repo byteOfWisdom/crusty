@@ -9,7 +9,7 @@ pub enum KicadPcbError {
 	IoError(std::io::Error),
 	FileType,
 	ParseFail,
-	NoLayer,
+	NoLayer(String),
 	Other(String),
 }
 
@@ -87,7 +87,7 @@ struct PcbLayer {
 
 impl PcbLayer {
 	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
-		let get_err = KicadPcbError::NoLayer;
+		let get_err = KicadPcbError::NoLayer(exp.print());
 
 		if exp.values().len() == 0 {
 			return Err(get_err);
@@ -190,7 +190,7 @@ fn test_pad_from_exp() {
 #[derive(Debug, Default)]
 struct Footprint {
 	pub name : String,
-	pub layer : PcbLayer,
+	pub layer : String,
 	pub at : V2,
 	pub pads : Vec<Pad>,
 	//may need more fields
@@ -203,12 +203,39 @@ impl Footprint {
 
 		let mut footprint = Footprint::default();
 
+		footprint.name = exp.get_name();
+
+
 		footprint.pads = exp.get("pad").iter()
 			.filter_map(|x| match Pad::from_exp(&x) {
 				Ok(v) => Some(v), 
 				Err(e) => None
 			})
 			.collect();
+
+		footprint.layer = match value_to_string(
+			& match exp.get("layer").get(0) {
+				Some(l) => l,
+				None => return Err(get_err),
+			}.values()[0]
+		){
+			Some(l) => l,
+			None => return Err(get_err),
+		};
+
+		footprint.at = match exp.get("at")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),				
+			}.values()
+			.iter()
+			.map(|x| match value_to_float(&x) {
+				Some(v) => v,
+				None => panic!("{:?}", x),
+			}) // maybe make this a match
+			.collect::<Vec<f64>>()
+			.try_into()
+			.unwrap(); //maybe make this a match
 
 		return Ok(footprint);
 	}
@@ -386,6 +413,8 @@ fn test_get_footprints() {
 	).unwrap();
 
 	let footprints = get_footprints(&test_pcb).unwrap();
+
+	panic!("{:?}", footprints);
 
 	assert_eq!(footprints.len(), 2);
 }
