@@ -414,7 +414,7 @@ fn test_get_footprints() {
 
 	let footprints = get_footprints(&test_pcb).unwrap();
 
-	panic!("{:?}", footprints);
+	//panic!("{:?}", footprints);
 
 	assert_eq!(footprints.len(), 2);
 }

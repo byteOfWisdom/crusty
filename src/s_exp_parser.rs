@@ -254,32 +254,36 @@ fn test_sexpr_get() {
 
 
 pub fn parse (s : &str) -> Option<SExpr> {
-	let chunks = s.split_whitespace().map(|x| x.to_string());
 	let mut leveled_values : HalfParsed = Vec::new();
+	let mut chunk = String::new();
 
-	for chunk in chunks {
-		let delims : HalfParsed = get_delimeter(&chunk).iter()
-			.map(|x| {let res : Either<Value, Delimeter> = Either::That(*x); res})
-			.collect::<HalfParsed>();
-
-		let mut opening : HalfParsed = Vec::new();
-		let mut closing : HalfParsed = Vec::new();
-
-		for elem in delims.iter() {
-			if *elem == Either::That(Delimeter::Open) {
-				opening.push(elem.clone());
-			} else {
-				closing.push(elem.clone());
-			}
+	for c in s.chars() {
+		if c.is_whitespace() && !chunk.is_empty() {
+			leveled_values.push(Either::This(turn_to_value(&chunk)));
+			chunk = String::new();
 		}
 
+		else if c == '(' {
+			leveled_values.push(Either::This(turn_to_value(&chunk)));
+			chunk = String::new();
+			leveled_values.push(Either::That(Delimeter::Open));
+		}
 
-		leveled_values.extend(opening);
-		leveled_values.push(Either::This(turn_to_value(&chunk)));
-		leveled_values.extend(closing);
+		else if c == ')' {
+			leveled_values.push(Either::This(turn_to_value(&chunk)));
+			chunk = String::new();
+			leveled_values.push(Either::That(Delimeter::Close));
+		}
+
+		else {
+			chunk.push(c);
+		}
 	}
 
-	//println!("{:?}", leveled_values);
+	if !chunk.is_empty() {
+		leveled_values.push(Either::This(turn_to_value(&chunk)));
+	}
+
 
 	return Some(merge_into_exp(leveled_values));
 }
@@ -406,58 +410,4 @@ fn test_get_closing_delim() {
 	};
 
 	assert_eq!(get_closing_delim(&test_list, 1), 6);
-}
-
-
-fn get_delimeter(s : &str) -> Vec<Delimeter> {
-	let mut res = Vec::new();
-
-	for c in s.trim_start().chars() {
-		if c.is_whitespace() { continue }
-
-		if c != '(' { break }
-
-		res.push(Delimeter::Open);
-	}
-
-	for c in s.trim_end().chars().rev() {
-		if c.is_whitespace() { continue }
-
-		if c != ')' { break }
-
-		res.push(Delimeter::Close);
-	}
-
-	return res;
-}
-
-#[test]
-fn test_ascends() {
-	assert_eq!(get_delimeter(&"test test)"), vec!{Delimeter::Close});
-	assert_eq!(get_delimeter(&"test test )"), vec!{Delimeter::Close});
-	assert_eq!(get_delimeter(&"test test )))"), vec!{Delimeter::Close, Delimeter::Close, Delimeter::Close});
-	assert_eq!(get_delimeter(&"test test ) "), vec!{Delimeter::Close});
-	assert_eq!(get_delimeter(&"test test"), vec!{});
-	assert_eq!(get_delimeter(&"test ) test"), vec!{});
-}
-
-#[test]
-fn test_descends() {
-	assert_eq!(get_delimeter(&"(test test"), vec!{Delimeter::Open});
-	assert_eq!(get_delimeter(&"( test test"), vec!{Delimeter::Open});
-	assert_eq!(get_delimeter(&" ( test test"), vec!{Delimeter::Open});
-	assert_eq!(get_delimeter(&"test test"), vec!{});
-	assert_eq!(get_delimeter(&"test ( test"), vec!{});
-}
-
-
-#[test]
-fn test_mixed_parens() {
-	let o = Delimeter::Open;
-	let c = Delimeter::Close;
-	assert_eq!(get_delimeter(&"(test test))"), vec!{o, c, c});
-	assert_eq!(get_delimeter(&"("), vec!{o});
-	assert_eq!(get_delimeter(&") ("), vec!{c, o});
-	assert_eq!(get_delimeter(&"test test"), vec!{});
-	assert_eq!(get_delimeter(&"test ( test"), vec!{});
 }
