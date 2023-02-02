@@ -256,9 +256,16 @@ fn test_sexpr_get() {
 pub fn parse (s : &str) -> Option<SExpr> {
 	let mut leveled_values : HalfParsed = Vec::new();
 	let mut chunk = String::new();
+	let mut in_string = false;
 
 	for c in s.chars() {
-		if c.is_whitespace() && !chunk.is_empty() {
+		if c == '\"' {in_string = !in_string;}
+		
+		if in_string {
+			chunk.push(c);
+		}
+
+		else if c.is_whitespace() && !chunk.is_empty() {
 			leveled_values.push(Either::This(turn_to_value(&chunk)));
 			chunk = String::new();
 		}
