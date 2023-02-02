@@ -33,6 +33,17 @@ struct PcbNet {
 	pub name : String,
 }
 
+impl PartialEq for PcbNet {
+	fn eq(&self, other : &Self) -> bool {
+		self.id == other.id && self.name == other.name
+	}
+
+	fn ne(&self, other : &Self) -> bool {
+		! (self == other)
+	}
+
+}
+
 impl PcbNet {
 	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
 		let values = exp.values();
@@ -386,13 +397,19 @@ fn test_get_layers() {
 
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
-	let raw_nets : Vec<PcbNet> = exp
+	let mut nets : Vec<PcbNet> = Vec::new();
+
+	for net in exp
 		.get("net")
 		.iter()
-		.map(|x| PcbNet::from_exp(x).unwrap())
-		.collect::<Vec<PcbNet>>();
+		.map(|x| PcbNet::from_exp(x).unwrap()) 
+	{
+		if !nets.contains(&net) {
+			nets.push(net.clone());
+		}
+	}
 
-	return Ok(raw_nets);
+	return Ok(nets);
 }
 
 #[test]
@@ -403,9 +420,7 @@ fn test_get_nets() {
 
 	let nets = get_nets(test_pcb).unwrap();
 
-	panic!("{:?}", nets);
-
-	assert_eq!(nets.len(), 8);
+	assert_eq!(nets.len(), 4);
 
 }
 
