@@ -333,12 +333,29 @@ impl KicadPcb {
 	fn as_s_expr(&self) -> SExpr {
 		unimplemented!();
 	}
+
+
+	#[allow(dead_code)]
+	pub fn route(&self, settings : RouterSettings) -> Option<KicadPcb> {
+		return None;
+	}
 }
 
-#[allow(dead_code)]
-pub fn route(_ : KicadPcb) -> KicadPcb {
-	unimplemented!();
+
+#[derive(Debug, Copy, Clone, Default)]
+struct RouterSettings {
+	pub max_passes : usize,
 }
+
+
+
+#[test]
+fn test_route() {
+	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
+	let settings = RouterSettings::default();
+	test_pcb.route(settings).unwrap();
+}
+
 
 
 fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
@@ -398,6 +415,9 @@ fn test_get_layers() {
 
 fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
 	let mut nets : Vec<PcbNet> = Vec::new();
+
+	// any mention of a net can be treated as a declaration as such
+	// there is no need to distinguish between declaration and other mentions
 
 	for net in exp
 		.get("net")
@@ -459,4 +479,5 @@ fn test_get_footprints() {
 #[test]
 fn test_pcb_load() {
 	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
+	//TODO: how do i even write a test for this??
 }
