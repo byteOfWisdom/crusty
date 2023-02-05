@@ -359,18 +359,18 @@ fn test_route() {
 
 
 fn get_general(exp : &SExpr) -> Result<PcbGeneral, KicadPcbError> {
-	let get_err = Err(KicadPcbError::GeneralFail);
-
-	for general_section in exp.get("general").iter() {
-		match general_section.get_value("thickness") {
-			Some(Value::Float(f)) => {
-				return Ok(PcbGeneral{thickness : f});
-			},
-			_ => continue,
-		};
+	match exp.get("general")
+		.iter()
+		.filter_map(|x| 
+			match x.get_value("thickness") {
+				Some(Value::Float(f)) => Some(PcbGeneral{thickness : f}),
+				_ => None,
+		} )
+		.next() 
+	{
+		Some(v) => Ok(v),
+		None => Err(KicadPcbError::GeneralFail)
 	}
-
-	return get_err;
 }
 
 #[test]
@@ -386,19 +386,11 @@ fn test_get_general() {
 
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
-	let mut layers = Vec::new();
-
-
-	// assumes the first "layers" tag to be the declaration
-	for layer in exp.get("layers")[0].sub_expressions().iter() {
-		//println!("{:?}\n", &layer);
-		match PcbLayer::from_exp(layer) {
-			Ok(l) => layers.push(l),
-			Err(_) => continue,
-		};
-	}
-
-	return Ok(layers);
+	exp.get("layers")[0]
+		.sub_expressions()
+		.iter()
+		.map(| elem | PcbLayer::from_exp(elem))
+		.collect()
 }
 
 #[test]
@@ -418,11 +410,10 @@ fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
 
 	// any mention of a net can be treated as a declaration as such
 	// there is no need to distinguish between declaration and other mentions
-
 	for net in exp
 		.get("net")
 		.iter()
-		.map(|x| PcbNet::from_exp(x).unwrap()) 
+		.map(|x| PcbNet::from_exp(x).unwrap())
 	{
 		if !nets.contains(&net) {
 			nets.push(net.clone());
@@ -446,20 +437,11 @@ fn test_get_nets() {
 
 
 fn get_footprints(exp : &SExpr) -> Result<Vec<Footprint>, KicadPcbError> {
-	let raw_footprints = exp.get("footprint");
-
-	let mut done_footprints = Vec::new();
-
-	for footprint in raw_footprints.iter() {
-		match Footprint::from_exp(footprint) {
-			Ok(f) => {done_footprints.push(f)},
-			Err(e) => return Err(e),
-		};
-	}
-
-	return Ok(done_footprints);
+	exp.get("footprint")
+		.iter()
+		.map(| elem | Footprint::from_exp(elem))
+		.collect()
 }
-
 
 
 #[test]
@@ -475,6 +457,26 @@ fn test_get_footprints() {
 	assert_eq!(footprints.len(), 2);
 }
 
+
+fn get_wires(exp : &SExpr) -> () {
+	todo!();
+}
+
+
+#[test]
+fn test_get_wires() {
+	unimplemented!();
+}
+
+
+fn get_vias(exp : &SExpr) -> () {
+	todo!();
+}
+
+#[test]
+fn test_get_vias() {
+	unimplemented!();
+}
 
 #[test]
 fn test_pcb_load() {

@@ -41,15 +41,12 @@ impl SExpr {
 	}
 
 	pub fn print(&self) -> String {
-		let mut res = String::new();
-		for element in self.iter() {
-			res.push_str(&match element {
+		self.iter()
+			.map(|x| match x {
 				Either::This(value) => format!(" {} ", value_as_string(value)),
 				Either::That(sub_exp) => format!("({})", sub_exp.print()),
-			});
-		}
-
-		return res;
+			})
+			.collect()
 	}
 
 	pub fn get_name(&self) -> String {
@@ -66,17 +63,13 @@ impl SExpr {
 		if self.get_name() == name {
 			return vec!{SExpr{content : self.content[1..].to_vec()}};
 		} else {
-			let mut res = Vec::new();
-			for sub in self.iter() {
-				match sub {
-					Either::This(_) => {},
-					Either::That(exp) => {
-						res.append(&mut exp.get(name));
-					},
-				};
-			}
-
-			return res;
+			return self.iter()
+				.filter_map(|x| match x {
+					Either::That(exp) => Some(exp.get(name)),
+					_ => None,
+				})
+				.flatten()
+				.collect();
 		}
 	}
 
@@ -130,30 +123,21 @@ impl SExpr {
 	}
 
 	pub fn values(&self) -> Vec<Value>{
-		let mut vs = Vec::new();
-
-		for elem in self.iter() {
-			match elem {
-				Either::This(value) => vs.push(value.clone()),
-				Either::That(_) => continue,
-			};
-		}
-
-		return vs;
+		self.iter()
+			.filter_map(|x| match x {
+				Either::This(value) => Some(value.clone()),
+				Either::That(_) => None,				
+			})
+			.collect()
 	}
 
 	pub fn sub_expressions(&self) -> Vec<SExpr> {
-		let mut vs = Vec::new();
-
-		for elem in self.iter() {
-			match elem {
-				Either::That(exp) => vs.push(*exp.clone()),
-				Either::This(_) => continue,
-			};
-		}
-
-		return vs;
-
+		self.iter()
+			.filter_map(|x| match x {
+				Either::That(exp) => Some(*exp.clone()),
+				Either::This(_) => None,
+			})
+			.collect()
 	}
 }
 
