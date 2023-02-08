@@ -257,7 +257,7 @@
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Value" "GND" (id 1) (at 68.834 62.23 0))
-    (property "Footprint" "" (id 2) (at 68.834 56.896 0)
+    (property "Footprint" "Connector_PinHeader_1.00mm:PinHeader_1x01_P1.00mm_Vertical" (id 2) (at 68.834 56.896 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "" (id 3) (at 68.834 56.896 0)
@@ -288,7 +288,7 @@
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Value" "+5V" (id 1) (at 48.26 62.23 0))
-    (property "Footprint" "" (id 2) (at 48.26 56.896 0)
+    (property "Footprint" "Connector_PinHeader_1.00mm:PinHeader_1x01_P1.00mm_Vertical" (id 2) (at 48.26 56.896 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "" (id 3) (at 48.26 56.896 0)
@@ -303,10 +303,10 @@
 
   (symbol_instances
     (path "/60923c7c-f96b-4b59-991f-a62a3ff1f03c"
-      (reference "#PWR0101") (unit 1) (value "GND") (footprint "")
+      (reference "#PWR0101") (unit 1) (value "GND") (footprint "Connector_PinHeader_1.00mm:PinHeader_1x01_P1.00mm_Vertical")
     )
     (path "/a88d66c1-4f99-402f-82b2-03a160d7511e"
-      (reference "#PWR0102") (unit 1) (value "+5V") (footprint "")
+      (reference "#PWR0102") (unit 1) (value "+5V") (footprint "Connector_PinHeader_1.00mm:PinHeader_1x01_P1.00mm_Vertical")
     )
     (path "/59f087d8-bd70-492d-9fa5-e75f5fbcf103"
       (reference "D0") (unit 1) (value "LED") (footprint "LED_SMD:LED_1210_3225Metric")

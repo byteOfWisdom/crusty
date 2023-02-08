@@ -4,6 +4,12 @@ use crate::s_exp_parser::SExpr;
 use crate::s_exp_parser;
 use crate::value::*;
 
+
+type NetId = usize;
+type LayerId = usize;
+type V2 = [f64; 2];
+
+
 #[derive(Debug)]
 pub enum KicadPcbError {
 	IoError(std::io::Error),
@@ -13,9 +19,12 @@ pub enum KicadPcbError {
 	GeneralFail,
 	FootprintFail,
 	PadFail,
+	WireFail,
+	ViaFail,
 	NoLayer(String),
 	Other(String),
 }
+
 
 #[derive(Debug, Copy, Clone, Default)]
 enum LayerType {
@@ -25,11 +34,112 @@ enum LayerType {
 }
 
 
+#[derive(Debug, Default, Clone)]
+struct Wire {
+	pub net_id : NetId,
+	pub layer_name : String,
+	pub start : V2,
+	pub end : V2,
+}
+
+
+impl Wire {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let get_err = KicadPcbError::WireFail;
+
+		let start = match exp.get("start")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),				
+			}.values()
+			.iter()
+			.map(|x| match value_to_float(&x) {
+				Some(v) => v,
+				None => panic!("{:?}", x),
+			}) // maybe make this a match
+			.collect::<Vec<f64>>()
+			.try_into()
+			.unwrap(); //maybe make this a match
+
+		let end = match exp.get("end")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),				
+			}.values()
+			.iter()
+			.map(|x| match value_to_float(&x) {
+				Some(v) => v,
+				None => panic!("{:?}", x),
+			}) // maybe make this a match
+			.collect::<Vec<f64>>()
+			.try_into()
+			.unwrap(); //maybe make this a match
+
+		let net_id = value_to_int(&exp.get("net")[0].values()[0]).unwrap() as usize;
+
+		let layer_name = value_to_string(&exp.get("layer")[0].values()[0]).unwrap();
+
+		return Ok(Wire{
+			net_id : net_id,
+			layer_name : layer_name,
+			start : start,
+			end : end,
+		});
+	}
+}
+
+
+#[derive(Debug, Default, Clone)]
+struct Via {
+	pub net_id : NetId,
+	pub at : V2,
+	pub layers : Vec<String>,
+}
+
+impl Via {
+	pub fn from_exp(exp : &SExpr) -> Result<Self, KicadPcbError> {
+		let get_err = KicadPcbError::ViaFail;
+
+		let at = match exp.get("at")
+			.get(0) {
+				Some(s) => s,
+				None => return Err(get_err),				
+			}.values()
+			.iter()
+			.map(|x| match value_to_float(&x) {
+				Some(v) => v,
+				None => panic!("{:?}", x),
+			}) // maybe make this a match
+			.collect::<Vec<f64>>()
+			.try_into()
+			.unwrap(); //maybe make this a match
+
+
+		let layers = exp.get("layers")[0]
+			.values()
+			.iter()
+			.filter_map(value_to_string)
+			.collect();
+
+		let net_id = value_to_int(
+			&exp.get("net")[0].values()[0]
+		).unwrap() as usize;
+
+		return Ok(Via{
+			at : at,
+			layers : layers,
+			net_id : net_id,
+		});
+
+	}
+}
+
+
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
 #[derive(Debug, Default, Clone)]
 struct PcbNet {
-	pub id : isize,
+	pub id : NetId,
 	pub name : String,
 }
 
@@ -65,7 +175,7 @@ impl PcbNet {
 		};
 
 		return Ok(PcbNet {
-			id : id,
+			id : id as usize,
 			name : name,
 		});
 	}
@@ -82,9 +192,6 @@ fn test_pcb_net_from_exp() {
 }
 
 
-type V2 = [f64; 2];
-
-
 // TODO implement this
 // TODO add to parser
 #[derive(Debug)]
@@ -93,7 +200,7 @@ struct Setup {
 
 #[derive(Debug, Clone, Default)]
 struct PcbLayer {
-	pub id : usize,
+	pub id : LayerId,
 	pub name : String,
 	pub layer_type : LayerType,
 	pub attrib : String,
@@ -264,7 +371,9 @@ pub struct KicadPcb {
 	general : 	PcbGeneral,
 	layers : Vec<PcbLayer>,
 	nets : Vec<PcbNet>,
-	footprints : Vec<Footprint>
+	footprints : Vec<Footprint>,
+	wires : Vec<Wire>,
+	vias : Vec<Via>,
 }
 
 
@@ -276,6 +385,8 @@ impl KicadPcb {
 			layers : Vec::new(),
 			nets : Vec::new(),
 			footprints : Vec::new(),
+			wires : Vec::new(),
+			vias : Vec::new(),
 		}
 	}
 
@@ -317,6 +428,16 @@ impl KicadPcb {
 			},
 			
 			footprints : match get_footprints(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
+
+			wires : match get_wires(&pcb_exp) {
+				Ok(result) => result,
+				Err(e) => return Err(e),
+			},
+
+			vias : match get_vias(&pcb_exp) {
 				Ok(result) => result,
 				Err(e) => return Err(e),
 			},
@@ -389,7 +510,7 @@ fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
 	exp.get("layers")[0]
 		.sub_expressions()
 		.iter()
-		.map(| elem | PcbLayer::from_exp(elem))
+		.map(PcbLayer::from_exp)
 		.collect()
 }
 
@@ -413,7 +534,10 @@ fn get_nets(exp : &SExpr) -> Result<Vec<PcbNet>, KicadPcbError> {
 	for net in exp
 		.get("net")
 		.iter()
-		.map(|x| PcbNet::from_exp(x).unwrap())
+		.filter_map(|x| match PcbNet::from_exp(x) {
+			Ok(v) => Some(v),
+			_ => None,
+		})
 	{
 		if !nets.contains(&net) {
 			nets.push(net.clone());
@@ -439,7 +563,7 @@ fn test_get_nets() {
 fn get_footprints(exp : &SExpr) -> Result<Vec<Footprint>, KicadPcbError> {
 	exp.get("footprint")
 		.iter()
-		.map(| elem | Footprint::from_exp(elem))
+		.map(Footprint::from_exp)
 		.collect()
 }
 
@@ -454,28 +578,47 @@ fn test_get_footprints() {
 
 	//panic!("{:?}", footprints);
 
-	assert_eq!(footprints.len(), 2);
+	assert_eq!(footprints.len(), 4);
 }
 
 
-fn get_wires(exp : &SExpr) -> () {
-	todo!();
+fn get_wires(exp : &SExpr) -> Result<Vec<Wire>, KicadPcbError> {
+	exp.get("segment")
+		.iter()
+		.map(Wire::from_exp)
+		.collect()
 }
 
 
 #[test]
 fn test_get_wires() {
-	unimplemented!();
+	let test_pcb = &s_exp_parser::parse(
+		&read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+	).unwrap();
+
+	let wires = get_wires(&test_pcb).unwrap();
+
+	assert_eq!(wires.len(), 2);
 }
 
 
-fn get_vias(exp : &SExpr) -> () {
-	todo!();
+fn get_vias(exp : &SExpr) -> Result<Vec<Via>, KicadPcbError> {
+	exp.get("via")
+		.iter()
+		.map(Via::from_exp)
+		.collect()	
 }
 
 #[test]
 fn test_get_vias() {
-	unimplemented!();
+	let test_pcb = &s_exp_parser::parse(
+		&read_to_string("./test_pcb/test_pcb.kicad_pcb").unwrap()
+	).unwrap();
+
+	let vias = get_vias(&test_pcb).unwrap();
+
+	assert_eq!(vias.len(), 1);
+
 }
 
 #[test]
