@@ -5,9 +5,9 @@ use crate::s_exp_parser;
 use crate::value::*;
 
 
-type NetId = usize;
-type LayerId = usize;
-type V2 = [f64; 2];
+pub type NetId = usize;
+pub type LayerId = usize;
+pub type V2 = [f64; 2];
 
 
 #[derive(Debug)]
@@ -26,8 +26,8 @@ pub enum KicadPcbError {
 }
 
 
-#[derive(Debug, Copy, Clone, Default)]
-enum LayerType {
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
+pub enum LayerType {
 	#[default]
 	User,
 	Signal,
@@ -35,7 +35,7 @@ enum LayerType {
 
 
 #[derive(Debug, Default, Clone)]
-struct Wire {
+pub struct Wire {
 	pub net_id : NetId,
 	pub layer_name : String,
 	pub start : V2,
@@ -90,7 +90,7 @@ impl Wire {
 
 
 #[derive(Debug, Default, Clone)]
-struct Via {
+pub struct Via {
 	pub net_id : NetId,
 	pub at : V2,
 	pub layers : Vec<String>,
@@ -138,7 +138,7 @@ impl Via {
 // maybe replace all name strings with hashes:
 // would use less mem and be stack allocatable instead of strings, which arent
 #[derive(Debug, Default, Clone)]
-struct PcbNet {
+pub struct PcbNet {
 	pub id : NetId,
 	pub name : String,
 }
@@ -195,11 +195,11 @@ fn test_pcb_net_from_exp() {
 // TODO implement this
 // TODO add to parser
 #[derive(Debug)]
-struct Setup {
+pub struct Setup {
 }
 
 #[derive(Debug, Clone, Default)]
-struct PcbLayer {
+pub struct PcbLayer {
 	pub id : LayerId,
 	pub name : String,
 	pub layer_type : LayerType,
@@ -248,16 +248,17 @@ impl PcbLayer {
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
-struct PcbGeneral {
+pub struct PcbGeneral {
 	pub thickness: f64,
 }
 
 
 #[allow(dead_code)]
-#[derive(Debug, Default)]
-struct Pad {
+#[derive(Debug, Default, Clone)]
+pub struct Pad {
 	pub layer : Vec<String>,
 	pub at : V2,
+	pub abs_at : V2,
 	pub net : PcbNet,
 	//may need more fields
 }
@@ -291,6 +292,8 @@ impl Pad {
 			.try_into()
 			.unwrap(); //maybe make this a match
 
+		pad.abs_at = pad.at;
+
 		return Ok(pad);
 	}
 }
@@ -310,7 +313,7 @@ fn test_pad_from_exp() {
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
-struct Footprint {
+pub struct Footprint {
 	pub name : String,
 	pub layer : String,
 	pub at : V2,
@@ -359,6 +362,16 @@ impl Footprint {
 			.try_into()
 			.unwrap(); //maybe make this a match
 
+		// write the absolute positions of the pads
+		footprint.pads = footprint.pads
+			.iter()
+			.map(|p| {
+				let mut r = p.clone();
+				r.abs_at[0] += footprint.at[0];
+				r.abs_at[1] += footprint.at[1];
+				return r;
+			}).collect();
+
 		return Ok(footprint);
 	}
 }
@@ -368,12 +381,12 @@ impl Footprint {
 #[derive(Debug)]
 //only contains information relevant for routing, not a complete representation
 pub struct KicadPcb {
-	general : 	PcbGeneral,
-	layers : Vec<PcbLayer>,
-	nets : Vec<PcbNet>,
-	footprints : Vec<Footprint>,
-	wires : Vec<Wire>,
-	vias : Vec<Via>,
+	pub general : PcbGeneral,
+	pub layers : Vec<PcbLayer>,
+	pub nets : Vec<PcbNet>,
+	pub footprints : Vec<Footprint>,
+	pub wires : Vec<Wire>,
+	pub vias : Vec<Via>,
 }
 
 
@@ -456,16 +469,33 @@ impl KicadPcb {
 	}
 
 
+	pub fn routable_layers(&self) -> usize {
+		return self.layers
+			.iter()
+			.filter_map(|x| match x.layer_type {
+				LayerType::Signal => Some(()),
+				_ => None,
+			})
+			.count();
+	}
+
 	#[allow(dead_code)]
-	pub fn route(&self, settings : RouterSettings) -> Option<KicadPcb> {
+	pub fn route(&self, settings : &RouterSettings) -> Option<KicadPcb> {
+		// convert into abstract route graph
+
+		//route it
+
+		//convert back from absctract route graph
+
 		return None;
 	}
 }
 
 
 #[derive(Debug, Copy, Clone, Default)]
-struct RouterSettings {
+pub struct RouterSettings {
 	pub max_passes : usize,
+	pub algorith : u8,
 }
 
 
@@ -474,7 +504,7 @@ struct RouterSettings {
 fn test_route() {
 	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
 	let settings = RouterSettings::default();
-	test_pcb.route(settings).unwrap();
+	test_pcb.route(&settings).unwrap();
 }
 
 

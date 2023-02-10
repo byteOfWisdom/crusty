@@ -4,6 +4,7 @@ use std::fs::read_to_string;
 mod router;
 mod value;
 mod s_exp_parser;
+mod raster_solver;
 
 fn main() {
 	let mut to_stdout = false;
