@@ -25,6 +25,7 @@ struct Raster {
 	x_cells : usize,
 	y_cells : usize,
 	layers : usize,
+	spacing : f64,
 }
 
 
@@ -46,6 +47,7 @@ impl Raster {
 			x_cells : x,
 			y_cells : y,
 			layers : z,
+			spacing : spacing,
 		};
 
 
@@ -55,12 +57,16 @@ impl Raster {
 			.iter()
 			.flat_map(|x| x.pads.iter()) 
 		{
+			//TODO: place pads of actual size instead of one single cell
 			let point = raster.get_discrete(pad.abs_at, 1);
-			raster.set();
+			raster.set(point, GridState::Pad);
 		}
 
 		for via in board_params.vias.iter() {
-			todo!();
+			for layer in via.layers.iter() {
+				let point = raster.get_discrete(via.at, board_params.get_layer_id(&layer).unwrap());
+				raster.set(point, GridState::Via);
+			}
 		}
 
 		for wire in board_params.wires.iter() {
@@ -76,14 +82,19 @@ impl Raster {
 	}
 
 	pub fn set(&mut self, pos : Discrete3D, value : GridState) {
-		self.data[self.index(pos)] = value;
+		let index = self.index(pos);
+		self.data[index] = value;
 	}
 
 	fn index(&self, point : Discrete3D) -> usize {
 		return self.layers * point.layer + self.x_cells * point.x + point.y;
 	}
 
-	fn get_discrete(&self, at : V2, layer : usize) -> Discrete3D {}
+	fn get_discrete(&self, at : V2, layer : usize) -> Discrete3D {
+		let x = (at[0] / self.spacing) as usize;
+		let y = (at[1] / self.spacing) as usize;
+		return Discrete3D::from(x, y, layer);
+	}
 
 	pub fn route(&mut self) {
 		//http://www.eecs.northwestern.edu/~haizhou/357/lec6.pdf
@@ -102,8 +113,30 @@ impl Raster {
 enum GridState {
 	#[default]
 	Free,
+	Pad,
 	Wire,
 	Via,
 	UserWire, //so they cant get removed
 	UserVia,
+}
+
+
+#[test]
+fn test_raster_gen() {
+	unimplemented!();
+}
+
+#[test]
+fn test_raster_get_set() {
+	unimplemented!();
+}
+
+#[test]
+fn test_raster_get_discrete() {
+	unimplemented!();
+}
+
+#[test]
+fn test_raster_get_route() {
+	unimplemented!();
 }

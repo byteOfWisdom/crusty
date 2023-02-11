@@ -226,7 +226,7 @@ impl PcbLayer {
 		};
 
 		let layer_type = match value_to_string(&exp.values()[2]) {
-			Some(v) => LayerType::default(),
+			Some(_) => LayerType::default(),
 			None => return Err(get_err),
 		};
 
@@ -240,20 +240,18 @@ impl PcbLayer {
 			id : id as usize,
 			name : name,
 			layer_type : layer_type,
-			attrib : String::new(),
+			attrib : attrib,
 		});
 	}
 }
 
 
-#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct PcbGeneral {
 	pub thickness: f64,
 }
 
 
-#[allow(dead_code)]
 #[derive(Debug, Default, Clone)]
 pub struct Pad {
 	pub layer : Vec<String>,
@@ -311,7 +309,6 @@ fn test_pad_from_exp() {
 
 
 
-#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct Footprint {
 	pub name : String,
@@ -334,7 +331,7 @@ impl Footprint {
 		footprint.pads = exp.get("pad").iter()
 			.filter_map(|x| match Pad::from_exp(&x) {
 				Ok(v) => Some(v), 
-				Err(e) => None
+				_ => None
 			})
 			.collect();
 
@@ -377,7 +374,6 @@ impl Footprint {
 }
 
 
-#[allow(dead_code)]
 #[derive(Debug)]
 //only contains information relevant for routing, not a complete representation
 pub struct KicadPcb {
@@ -390,7 +386,6 @@ pub struct KicadPcb {
 }
 
 
-#[allow(dead_code)]
 impl KicadPcb {
 	pub fn new(_expr : SExpr) -> Self {
 		KicadPcb {
@@ -402,7 +397,6 @@ impl KicadPcb {
 			vias : Vec::new(),
 		}
 	}
-
 
 	pub fn from_file(file : &str) -> Result<Self, KicadPcbError> {
 		if !file.ends_with(&".kicad_pcb") {
@@ -468,6 +462,12 @@ impl KicadPcb {
 		unimplemented!();
 	}
 
+	pub fn get_layer_id(&self, name : &str) -> Option<LayerId> {
+		self.layers.iter()
+			.filter_map(
+				|x| {if x.name == name {return Some(x.id); } return None;}
+			).next()
+	}
 
 	pub fn routable_layers(&self) -> usize {
 		return self.layers
@@ -479,7 +479,7 @@ impl KicadPcb {
 			.count();
 	}
 
-	#[allow(dead_code)]
+
 	pub fn route(&self, settings : &RouterSettings) -> Option<KicadPcb> {
 		// convert into abstract route graph
 
@@ -653,6 +653,6 @@ fn test_get_vias() {
 
 #[test]
 fn test_pcb_load() {
-	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
+	let _test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
 	//TODO: how do i even write a test for this??
 }

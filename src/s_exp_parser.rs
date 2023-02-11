@@ -24,7 +24,6 @@ pub struct SExpr {
 	pub content : Vec<Element>
 }
 
-#[allow(dead_code)]
 impl SExpr {
 	pub fn new() -> Self {
 		SExpr {

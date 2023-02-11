@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use std::env;
 use std::fs::read_to_string;
+
 
 mod router;
 mod value;
