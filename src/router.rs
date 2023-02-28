@@ -198,7 +198,7 @@ fn test_pcb_net_from_exp() {
 pub struct Setup {
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PcbLayer {
 	pub id : LayerId,
 	pub name : String,
@@ -225,10 +225,21 @@ impl PcbLayer {
 			None => return Err(get_err),
 		};
 
+		let signal = Some("signal".to_string());
+
+/*
 		let layer_type = match value_to_string(&exp.values()[2]) {
-			Some(_) => LayerType::default(),
+			signal => LayerType::Signal,
+			Some(_) => LayerType::User,
 			None => return Err(get_err),
 		};
+
+*/
+		let mut layer_type = LayerType::User;
+
+		if value_to_string(&exp.values()[2]) == signal {
+			layer_type = LayerType::Signal;
+		}
 
 		let attrib = match exp.values().get(3) {
 			Some(value) => value_to_string(&value).unwrap(),
@@ -246,7 +257,7 @@ impl PcbLayer {
 }
 
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct PcbGeneral {
 	pub thickness: f64,
 }
@@ -309,7 +320,7 @@ fn test_pad_from_exp() {
 
 
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Footprint {
 	pub name : String,
 	pub layer : String,
@@ -374,7 +385,7 @@ impl Footprint {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 //only contains information relevant for routing, not a complete representation
 pub struct KicadPcb {
 	pub general : PcbGeneral,
@@ -470,13 +481,17 @@ impl KicadPcb {
 	}
 
 	pub fn routable_layers(&self) -> usize {
-		return self.layers
-			.iter()
-			.filter_map(|x| match x.layer_type {
-				LayerType::Signal => Some(()),
-				_ => None,
-			})
-			.count();
+		let mut counter = 0;
+
+		for layer in self.layers.iter() {
+			if layer.layer_type == LayerType::Signal {
+				counter += 1;
+			}
+		}
+
+
+		return counter;
+
 	}
 
 
@@ -489,6 +504,14 @@ impl KicadPcb {
 
 		return None;
 	}
+}
+
+
+#[test]
+fn test_routable_layers() {
+	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
+
+	assert_eq!(test_pcb.routable_layers(), 2);
 }
 
 
@@ -537,11 +560,22 @@ fn test_get_general() {
 
 
 fn get_layers(exp : &SExpr) -> Result<Vec<PcbLayer>, KicadPcbError> {
-	exp.get("layers")[0]
+	let all_layers : Vec<PcbLayer> = exp.get("layers")[0]
 		.sub_expressions()
 		.iter()
 		.map(PcbLayer::from_exp)
-		.collect()
+		.collect::<Result<Vec<PcbLayer>, KicadPcbError>>()?;
+
+	let mut deduped_layers : Vec<PcbLayer> = Vec::new();
+
+	for layer in all_layers.iter() {
+		if !deduped_layers.contains(&layer) {
+			deduped_layers.push(layer.clone());
+		}
+	}
+
+	return Ok(deduped_layers);
+
 }
 
 #[test]

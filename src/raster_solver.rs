@@ -43,7 +43,7 @@ impl Raster {
 		let z = board_params.routable_layers();
 
 		let mut raster = Self{
-			data : Vec::with_capacity(x * y * z),
+			data : vec![GridState::Free ; x * y * z],
 			x_cells : x,
 			y_cells : y,
 			layers : z,
@@ -123,7 +123,8 @@ enum GridState {
 
 #[test]
 fn test_raster_gen() {
-	unimplemented!();
+	let test_pcb = KicadPcb::from_file("./test_pcb/test_pcb.kicad_pcb").unwrap();
+	let mut raster = Raster::new(&test_pcb);
 }
 
 #[test]
